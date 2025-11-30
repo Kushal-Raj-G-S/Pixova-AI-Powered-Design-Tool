@@ -159,72 +159,63 @@ export default function GeneratePage() {
 
       // Update message based on variations
       setTimeout(() => setProgressMessage(`Generating ${numVariations} variation${numVariations > 1 ? 's' : ''}...`), 500);
-      setTimeout(() => setProgressMessage('AI is creating your design...'), 3000);
-      setTimeout(() => setProgressMessage('Almost there...'), 8000);
+      setTimeout(() => setProgressMessage('AI is creating your designs...'), 3000);
+      setTimeout(() => setProgressMessage('Processing each variation separately...'), 10000);
 
       // Get the selected format details
       const formatDetails = formatPresets[selectedType as keyof typeof formatPresets][selectedFormat];
-
-      const requestBody = {
-        user_id: user.id, // Get from auth context
-        prompt: prompt.trim(),
-        design_type: selectedType,
-        style: selectedStyle,  // CRITICAL: Must match selected state
-        num_variations: numVariations,
-        quality: 'high', // Default to high quality (1536x1536)
-        brand_text: textMode === 'manual' ? brandText : null,  // Optional text for overlay
-        include_text_in_ai: textMode === 'ai',  // Whether AI should generate text
-        format: {
-          name: formatDetails.name,
-          width: formatDetails.width,
-          height: formatDetails.height,
-        },
-      };
-      console.log('📦 Request body:', requestBody);
-      console.log('🔍 VERIFY - Style being sent:', requestBody.style);
-
-      // Call the backend API
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-      const response = await fetch(`${apiUrl}/api/generate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-      });
 
-      console.log('📥 Response received:', response.status, response.statusText);
-
-      clearInterval(progressInterval);
-      setProgressPercent(95);
-      setProgressMessage('Finalizing your designs...');
-
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
-      }
-
-      const result = await response.json();
-      console.log('✅ Generation result:', result);
-
-      setProgressPercent(98);
-      setProgressMessage('Saving to your library...');
-
-      // Handle both single and multiple variations
+      // Generate variations separately to avoid Heroku 30s timeout
       const designs = [];
-      if (result.variations && Array.isArray(result.variations)) {
-        // Multiple variations - save each to database
-        for (const [index, variation] of result.variations.entries()) {
-          // Upload image to Supabase Storage for permanent storage
+      for (let i = 0; i < numVariations; i++) {
+        setProgressMessage(`Generating variation ${i + 1} of ${numVariations}...`);
+
+        const requestBody = {
+          user_id: user.id,
+          prompt: prompt.trim(),
+          design_type: selectedType,
+          style: selectedStyle,
+          num_variations: 1, // Always 1 per request to stay under 30s
+          quality: 'high',
+          brand_text: textMode === 'manual' ? brandText : null,
+          include_text_in_ai: textMode === 'ai',
+          format: {
+            name: formatDetails.name,
+            width: formatDetails.width,
+            height: formatDetails.height,
+          },
+        };
+
+        // Call the backend API for this variation
+        const response = await fetch(`${apiUrl}/api/generate`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+        });
+
+        if (!response.ok) {
+          console.error(`Variation ${i + 1} failed:`, response.status);
+          continue; // Skip failed variations
+        }
+
+        const result = await response.json();
+        const variation = result.variations?.[0];
+
+        if (variation) {
+          // Upload image to Supabase Storage
           const permanentUrl = await uploadImageFromUrl(
             variation.image_url,
             user.id,
             prompt,
-            `${selectedType}_${index + 1}`,
+            `${selectedType}_${i + 1}`,
             userPlanId
           );
 
           const savedDesign = await createDesign({
-            name: `${prompt.slice(0, 30)}${prompt.length > 30 ? '...' : ''} (${index + 1})`,
+            name: `${prompt.slice(0, 30)}${prompt.length > 30 ? '...' : ''} (${i + 1})`,
             type: selectedType,
             style: selectedStyle,
             prompt: prompt,
@@ -237,71 +228,31 @@ export default function GeneratePage() {
             generation_time_ms: variation.generation_time_ms,
             credits_used: 1,
             metadata: {
-              variation_number: variation.variation_number || (index + 1),
+              variation_number: i + 1,
               text_mode: textMode,
               brand_text: brandText || null
             }
           });
 
           designs.push({
-            id: savedDesign?.id || `design-${Date.now()}-${index}`,
+            id: savedDesign?.id || `design-${Date.now()}-${i}`,
             url: permanentUrl,
             prompt: variation.prompt || prompt,
             type: selectedType,
             style: selectedStyle,
-            format: formatDetails,
+            format: formatDetails.name,
             success: variation.success,
             model: variation.model_used,
             credit_cost: 1,
-            variation_number: variation.variation_number || (index + 1),
+            variation_number: i + 1,
           });
         }
-      } else {
-        // Single design
-        // Upload image to Supabase Storage for permanent storage
-        const permanentUrl = await uploadImageFromUrl(
-          result.image_url,
-          user.id,
-          prompt,
-          selectedType,
-          userPlanId
-        );
-
-        const savedDesign = await createDesign({
-          name: `${prompt.slice(0, 30)}${prompt.length > 30 ? '...' : ''}`,
-          type: selectedType,
-          style: selectedStyle,
-          prompt: prompt,
-          image_url: permanentUrl,
-          thumbnail_url: permanentUrl,
-          width: formatDetails.width,
-          height: formatDetails.height,
-          format: 'png',
-          model_used: result.model_used,
-          generation_time_ms: result.generation_time_ms,
-          credits_used: 1,
-          metadata: {
-            text_mode: textMode,
-            brand_text: brandText || null
-          }
-        });
-
-        designs.push({
-          id: savedDesign?.id || `design-${Date.now()}`,
-          url: permanentUrl,
-          prompt: result.prompt || prompt,
-          type: selectedType,
-          style: selectedStyle,
-          format: formatDetails,
-          success: result.success,
-          model: result.model_used,
-          credit_cost: 1,
-        });
       }
 
+      clearInterval(progressInterval);
       setGeneratedDesigns(designs);
       setProgressPercent(100);
-      setProgressMessage('Complete!');
+      setProgressMessage(`Successfully generated ${designs.length} design${designs.length > 1 ? 's' : ''}!`);
       setShowResults(true);
     } catch (error) {
       console.error('❌ Generation failed:', error);
@@ -581,10 +532,12 @@ export default function GeneratePage() {
                         onChange={(e) => setNumVariations(Number(e.target.value))}
                         className="ml-2 px-3 py-1 bg-gray-900 border border-white/10 rounded text-white [&>option]:bg-gray-900 [&>option]:text-white"
                       >
-                        <option value={1}>1 (Fastest)</option>
-                        <option value={2}>2 (Recommended)</option>
+                        <option value={1}>1 (Fastest - 10s)</option>
+                        <option value={3}>3 (~30s total)</option>
+                        <option value={5}>5 (~50s total)</option>
                       </select>
                     </label>
+                    <p className="text-xs text-gray-500">Each variation generated separately</p>
                   </div>
                   <p className="text-xs text-gray-400">
                     {prompt.length} / 500 characters
