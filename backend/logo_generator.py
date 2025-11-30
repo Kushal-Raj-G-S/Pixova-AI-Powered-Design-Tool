@@ -112,15 +112,15 @@ class LogoGenerator:
             variation_prompt = enhanced_prompt
             if num_variations > 1 and i > 0:
                 variation_modifiers = [
-                    "alternative version, simpler composition, fewer elements",
-                    "unique interpretation, minimal layout, reduced complexity",
-                    "creative variation, clean design, simple structure",
-                    "different geometric arrangement, streamlined, less detail",
-                    "reimagined concept, cleaner silhouette, minimal shapes"
+                    "alternative composition, different visual approach, unique interpretation",
+                    "reimagined concept, fresh perspective, creative variation",
+                    "distinct style, alternative aesthetic, different mood",
+                    "unique geometric arrangement, different symbolism, varied approach",
+                    "original interpretation, alternative design language, fresh concept"
                 ]
-                # Add anti-circle + anti-complexity constraints for variations
-                anti_constraints = ", avoid circular composition, non-circular layout, keep it simple, reduce internal details"
-                variation_prompt = f"{enhanced_prompt}, {variation_modifiers[i % len(variation_modifiers)]}{anti_constraints}"
+                # Keep quality high while adding diversity
+                diversity_boost = variation_modifiers[i % len(variation_modifiers)]
+                variation_prompt = f"{enhanced_prompt}, {diversity_boost}, maintain premium quality"
             
             result = await self._generate_single(
                 prompt=variation_prompt,
@@ -390,8 +390,8 @@ class LogoGenerator:
     
     def _enhance_prompt(self, prompt: str, style: str, include_text_in_ai: bool = False) -> str:
         """
-        Enhance prompt with style modifiers + logo-specific constraints.
-        Enforces flat, vector-like output with NO gradients/shadows/complexity.
+        Enhance prompt with style modifiers + quality boosters + logo-specific constraints.
+        Implements Perplexity's quality improvements for professional-grade outputs.
         
         Args:
             prompt: User's logo description
@@ -399,52 +399,67 @@ class LogoGenerator:
             include_text_in_ai: If False, adds 'no text' constraint for cleaner results
         """
         style_modifiers = {
-            "modern": "modern, clean, contemporary, professional",
-            "corporate": "corporate, professional, trustworthy, business-like",
-            "creative": "creative, innovative, artistic, bold",
-            "minimalist": "minimalist, simple, clean lines, elegant simplicity",
-            "vibrant": "vibrant, colorful, energetic, eye-catching",
-            "elegant": "elegant, sophisticated, refined, luxurious"
+            "modern": "modern, clean, contemporary, professional, award-winning design",
+            "corporate": "corporate, professional, trustworthy, business-like, Fortune 500 quality",
+            "creative": "creative, innovative, artistic, bold, Behance featured",
+            "minimalist": "minimalist, simple, clean lines, elegant simplicity, Swiss design aesthetic",
+            "vibrant": "vibrant, colorful, energetic, eye-catching, premium branding",
+            "elegant": "elegant, sophisticated, refined, luxurious, high-end brand identity"
         }
         
         modifier = style_modifiers.get(style, style_modifiers["modern"])
         
+        # QUALITY BOOSTERS (Perplexity recommended - immediate 30-40% improvement)
+        quality_enhancers = (
+            "award-winning logo design, Behance trending, professional branding, "
+            "8K resolution, ultra detailed, clean vector style, modern corporate aesthetic, "
+            "Pentagram studio quality, designer-grade, polished finish"
+        )
+        
         # TEXT HANDLING STRATEGY
         if include_text_in_ai:
-            # User wants AI to generate text - enhance quality
+            # User wants AI to generate text - enhance quality with premium typography
             text_constraints = (
-                "clean typography, perfect spelling, professional lettering, "
-                "high-quality text rendering, legible font"
+                "professional typography, premium font, perfect kerning, "
+                "high-quality lettering, crisp text rendering, designer-grade type, "
+                "legible font with depth, refined letterforms"
             )
-            text_negative = "blurry text, misspelled words, distorted letters, unreadable text"
+            text_negative = (
+                "blurry text, misspelled words, distorted letters, unreadable text, "
+                "poor kerning, amateur typography, pixelated text, generic fonts"
+            )
         else:
             # User will overlay text - tell AI to skip it COMPLETELY
             text_constraints = (
                 "ICON ONLY, NO TEXT WHATSOEVER, pure symbol, graphic mark only, "
-                "wordmark-free, text-free design, symbol-only logo, abstract icon"
+                "wordmark-free, text-free design, symbol-only logo, abstract icon, "
+                "emblematic design, visual identity mark"
             )
             text_negative = (
                 "text, letters, words, typography, font, alphabet, characters, "
                 "writing, script, calligraphy, wordmark, lettering, monogram with letters"
             )
         
-        # CRITICAL: Universal negative constraints (kills weaknesses)
+        # CRITICAL: Universal negative constraints (Perplexity's anti-quality list)
         negative_constraints = (
-            f"NO gradients, NO shadows, NO 3D effects, NO textures, "
-            f"NO bevels, NO shading, NO blur, NO noise, NO glows, {text_negative}"
+            f"blurry, low quality, pixelated, amateur, clipart, watermark, text artifacts, "
+            f"generic stock image, placeholder mockup, flat/lifeless, basic/simple gradient only, "
+            f"NO cheap effects, NO basic gradients, NO 3D effects, NO textures, "
+            f"NO bevels, NO heavy shading, NO blur, NO noise, NO glows, {text_negative}"
         )
         
-        # POSITIVE: Logo discipline constraints
+        # POSITIVE: Professional logo discipline (enhanced with depth/sophistication)
         positive_constraints = (
-            f"flat design, vector style, sharp edges, solid colors, "
-            f"clean silhouette, simple geometry, bold strokes, minimal details, "
-            f"professional logo, high contrast, {text_constraints}"
+            f"clean vector style, sharp edges, sophisticated color palette, "
+            f"professional visual hierarchy, refined geometry, subtle depth, "
+            f"polished details, modern composition, premium finish, "
+            f"high contrast, balanced design, {text_constraints}"
         )
         
-        # Build final prompt
-        if len(prompt) < 50:
-            return f"{prompt}, {modifier}, {positive_constraints}, {negative_constraints}"
-        return f"{prompt}, {modifier}, {positive_constraints}, {negative_constraints}"
+        # Build final prompt with quality layers
+        enhanced = f"{prompt}, {modifier}, {quality_enhancers}, {positive_constraints}, {negative_constraints}"
+        
+        return enhanced
     
     async def health_check(self) -> dict:
         """
