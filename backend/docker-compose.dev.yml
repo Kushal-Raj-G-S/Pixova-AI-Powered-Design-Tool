@@ -1,0 +1,24 @@
+# ===========================================
+# Pixova AI - Development Docker Compose Override
+# ===========================================
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+version: "3.8"
+
+services:
+  api:
+    build:
+      target: production
+    volumes:
+      - .:/app
+      - /app/__pycache__
+      - /app/.venv
+    environment:
+      - ENVIRONMENT=development
+      - DEBUG=true
+      - LOG_FORMAT=text
+      - WORKERS=1
+      - LOG_LEVEL=DEBUG
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--log-level", "debug"]
+    ports:
+      - "8000:8000"
