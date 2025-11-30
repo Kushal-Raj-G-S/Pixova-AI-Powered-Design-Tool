@@ -47,14 +47,13 @@ USER pixova
 # Environment defaults
 ENV ENVIRONMENT=production \
     HOST=0.0.0.0 \
-    PORT=8000 \
-    WORKERS=4 \
+    WORKERS=2 \
     LOG_LEVEL=INFO \
     LOG_FORMAT=json \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 
-# Expose port
+# Expose port (Heroku will override with $PORT)
 EXPOSE 8000
 
 # Health check
@@ -62,11 +61,12 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import httpx; httpx.get('http://localhost:8000/health', timeout=5).raise_for_status()"
 
 # Run with gunicorn for production
-CMD ["gunicorn", "main:app", \
-    "--worker-class", "uvicorn.workers.UvicornWorker", \
-    "--bind", "0.0.0.0:8000", \
-    "--workers", "4", \
-    "--timeout", "120", \
-    "--keep-alive", "5", \
-    "--access-logfile", "-", \
-    "--error-logfile", "-"]
+# Note: Heroku will override the port with $PORT environment variable
+CMD gunicorn main:app \
+    --worker-class uvicorn.workers.UvicornWorker \
+    --bind 0.0.0.0:${PORT:-8000} \
+    --workers ${WORKERS:-2} \
+    --timeout 120 \
+    --keep-alive 5 \
+    --access-logfile - \
+    --error-logfile -

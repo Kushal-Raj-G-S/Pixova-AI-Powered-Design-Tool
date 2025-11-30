@@ -1,0 +1,11 @@
+# Heroku Docker Deployment Configuration
+# This file tells Heroku to use Docker instead of buildpacks
+
+build:
+  docker:
+    web: backend/Dockerfile
+  config:
+    WORKERS: 2
+
+run:
+  web: gunicorn main:app --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --workers 2 --timeout 120 --keep-alive 5
