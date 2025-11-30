@@ -581,9 +581,8 @@ export default function GeneratePage() {
                         onChange={(e) => setNumVariations(Number(e.target.value))}
                         className="ml-2 px-3 py-1 bg-gray-900 border border-white/10 rounded text-white [&>option]:bg-gray-900 [&>option]:text-white"
                       >
-                        <option value={1}>1</option>
-                        <option value={3}>3</option>
-                        <option value={5}>5</option>
+                        <option value={1}>1 (Fastest)</option>
+                        <option value={2}>2 (Recommended)</option>
                       </select>
                     </label>
                   </div>

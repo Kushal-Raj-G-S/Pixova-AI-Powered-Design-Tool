@@ -62,11 +62,13 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 
 # Run with gunicorn for production
 # Note: Heroku will override the port with $PORT environment variable
+# Reduced workers and timeout to work within Heroku's 30s limit
 CMD gunicorn main:app \
     --worker-class uvicorn.workers.UvicornWorker \
     --bind 0.0.0.0:${PORT:-8000} \
-    --workers ${WORKERS:-2} \
-    --timeout 120 \
+    --workers ${WORKERS:-1} \
+    --timeout 300 \
+    --graceful-timeout 300 \
     --keep-alive 5 \
     --access-logfile - \
     --error-logfile -
