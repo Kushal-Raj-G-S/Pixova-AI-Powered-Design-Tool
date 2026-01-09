@@ -3,9 +3,7 @@
 
 build:
   docker:
-    web:
-      dockerfile: backend/Dockerfile
-      context: .
+    web: backend/Dockerfile
   config:
     WORKERS: 2
 
