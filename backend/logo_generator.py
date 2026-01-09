@@ -310,6 +310,18 @@ class LogoGenerator:
                 )
                 
                 elapsed_ms = int((time.perf_counter() - start) * 1000)
+                
+                # Check if response contains data
+                if not response.data or len(response.data) == 0:
+                    logger.warning(
+                        "API returned empty response",
+                        model=model
+                    )
+                    return {
+                        "success": False,
+                        "error": "No image data in response"
+                    }
+                
                 image_url = response.data[0].url
                 
                 return {

@@ -68,12 +68,12 @@ class Settings(BaseSettings):
     retry_max_delay: float = Field(default=10.0, description="Max delay in seconds")
     
     # ===========================================
-    # MODEL CONFIGURATION
+    # MODEL CONFIGURATION (Working models prioritized)
     # ===========================================
-    primary_model: str = "provider-5/flux-fast"
+    primary_model: str = "provider-4/imagen-4"
     fallback_models: str = Field(
-        default="provider-4/flux-schnell,provider-4/imagen-4,provider-4/imagen-3.5,provider-4/qwen-image,provider-5/dall-e-2,provider-5/imagen-4-fast",
-        description="Comma-separated list of fallback models"
+        default="provider-4/flux-schnell,provider-4/imagen-3.5,provider-8/imagen-3,provider-8/imagen-4,provider-2/flux-schnell,provider-5/flux-dev,provider-5/flux-schnell",
+        description="Comma-separated list of fallback models (working first, then non-working)"
     )
     
     # ===========================================

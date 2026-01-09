@@ -195,10 +195,12 @@ async def generate_design(request: GenerateRequest, req: Request):
     )
     
     # Apply quality preset to dimensions
+    # Note: Most AI models only support 1024x1024, so we use that for all qualities
+    # Quality will affect prompt enhancement and post-processing instead
     quality_sizes = {
         "standard": (1024, 1024),
-        "high": (1536, 1536),
-        "ultra": (2048, 2048)
+        "high": (1024, 1024),      # Changed from 1536 - most models don't support it
+        "ultra": (1024, 1024)       # Changed from 2048 - most models don't support it
     }
     width, height = quality_sizes.get(request.quality.value, (1024, 1024))
     logger.info(f"📐 Quality: {request.quality.value} → {width}x{height} pixels")
