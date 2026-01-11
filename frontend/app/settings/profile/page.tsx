@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 export default function ProfileSettingsPage() {
-    const { user } = useAuth()
+    const { user, loading: authLoading } = useAuth()
     const router = useRouter()
     const [firstName, setFirstName] = useState('')
     const [lastName, setLastName] = useState('')
@@ -18,12 +18,14 @@ export default function ProfileSettingsPage() {
     const [message, setMessage] = useState('')
 
     useEffect(() => {
+        if (authLoading) return // Wait for auth to load
+
         if (!user) {
             router.push('/auth/login')
             return
         }
         loadProfile()
-    }, [user])
+    }, [user, authLoading])
 
     const loadProfile = async () => {
         if (!user) return

@@ -19,7 +19,7 @@ interface UserPreferences {
 
 export default function PreferencesPage() {
     const router = useRouter()
-    const { user } = useAuth()
+    const { user, loading } = useAuth()
     const [preferences, setPreferences] = useState<UserPreferences>({
         theme: 'dark',
         language: 'en',
@@ -34,6 +34,8 @@ export default function PreferencesPage() {
     const [isSaving, setIsSaving] = useState(false)
 
     useEffect(() => {
+        if (loading) return // Wait for auth to load
+
         if (!user) {
             router.push('/auth/login')
             return

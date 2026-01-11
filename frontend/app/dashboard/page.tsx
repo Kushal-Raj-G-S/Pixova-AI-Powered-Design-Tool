@@ -119,29 +119,30 @@ export default function DashboardPage() {
     return user?.email?.split('@')[0] || 'Creator'
   }
 
-  const stats = [
+  // Only show stats when data is loaded
+  const stats = (dashboardStats && userProfile) ? [
     {
       name: 'Designs Created',
-      value: dashboardStats?.totalDesigns.toString() || '0',
-      change: `+${dashboardStats?.designsThisWeek || 0} this week`,
+      value: dashboardStats.totalDesigns.toString(),
+      change: `+${dashboardStats.designsThisWeek} this week`,
       icon: PhotoIcon,
       color: 'from-purple-500 to-pink-500'
     },
     {
       name: 'Active Projects',
-      value: dashboardStats?.activeProjects.toString() || '0',
-      change: `${dashboardStats?.projectsInProgress || 0} in progress`,
+      value: dashboardStats.activeProjects.toString(),
+      change: `${dashboardStats.projectsInProgress} in progress`,
       icon: FolderIcon,
       color: 'from-blue-500 to-cyan-500'
     },
     {
       name: 'AI Credits',
-      value: userProfile?.plan?.id === 'admin' ? '∞' : (userProfile?.credits?.toString() || '100'),
-      change: userProfile?.plan?.id === 'admin' ? 'Unlimited' : `Max: ${userProfile?.plan?.credits || 0}`,
+      value: userProfile.plan?.id === 'admin' ? '∞' : userProfile.credits?.toString(),
+      change: userProfile.plan?.id === 'admin' ? 'Unlimited' : `Max: ${userProfile.plan?.credits}`,
       icon: SparklesIcon,
       color: 'from-orange-500 to-yellow-500'
     },
-  ]
+  ] : null
 
   // Helper function to get activity icon and color
   const getActivityMeta = (action: string, entityType: string) => {
@@ -285,41 +286,21 @@ export default function DashboardPage() {
               )}
 
               {/* Notifications */}
-              <button
-                onClick={() => setShowComingSoon({
-                  show: true,
-                  title: 'Notifications',
-                  icon: '🔔',
-                  features: [
-                    'Design generation completed',
-                    'Credits running low',
-                    'New features & updates',
-                    'Plan expiry reminders'
-                  ]
-                })}
+              <a
+                href="/settings/notifications"
                 className="relative p-2 text-gray-400 hover:text-white transition-colors"
               >
                 <BellIcon className="h-6 w-6" />
                 <span className="absolute top-1 right-1 w-2 h-2 bg-pink-500 rounded-full"></span>
-              </button>
+              </a>
 
               {/* Settings */}
-              <button
-                onClick={() => setShowComingSoon({
-                  show: true,
-                  title: 'Settings',
-                  icon: '⚙️',
-                  features: [
-                    'Account preferences',
-                    'Email notifications',
-                    'API integrations',
-                    'Privacy settings'
-                  ]
-                })}
+              <a
+                href="/settings/preferences"
                 className="p-2 text-gray-400 hover:text-white transition-colors"
               >
                 <Cog6ToothIcon className="h-6 w-6" />
-              </button>
+              </a>
 
               {/* Profile Dropdown */}
               <div className="relative">
@@ -351,46 +332,22 @@ export default function DashboardPage() {
                         <p className="text-xs text-gray-400 truncate">{user.email}</p>
                       </div>
                       <div className="py-2">
-                        <button
-                          onClick={() => {
-                            setShowProfileMenu(false)
-                            setShowComingSoon({
-                              show: true,
-                              title: 'Profile Settings',
-                              icon: '👤',
-                              features: [
-                                'Display name',
-                                'Avatar image',
-                                'Email preferences',
-                                'Account details'
-                              ]
-                            })
-                          }}
-                          className="w-full px-4 py-2 text-left text-sm text-white hover:bg-white/10 transition-colors flex items-center gap-2"
+                        <a
+                          href="/settings/profile"
+                          onClick={() => setShowProfileMenu(false)}
+                          className="w-full px-4 py-2 text-left text-sm text-white hover:bg-white/10 transition-colors flex items-center gap-2 block"
                         >
                           <UserCircleIcon className="w-4 h-4" />
                           Profile Settings
-                        </button>
-                        <button
-                          onClick={() => {
-                            setShowProfileMenu(false)
-                            setShowComingSoon({
-                              show: true,
-                              title: 'Preferences',
-                              icon: '⚙️',
-                              features: [
-                                'Dashboard layout',
-                                'Default design quality',
-                                'Auto-save settings',
-                                'Keyboard shortcuts'
-                              ]
-                            })
-                          }}
-                          className="w-full px-4 py-2 text-left text-sm text-white hover:bg-white/10 transition-colors flex items-center gap-2"
+                        </a>
+                        <a
+                          href="/settings/preferences"
+                          onClick={() => setShowProfileMenu(false)}
+                          className="w-full px-4 py-2 text-left text-sm text-white hover:bg-white/10 transition-colors flex items-center gap-2 block"
                         >
                           <Cog6ToothIcon className="w-4 h-4" />
                           Preferences
-                        </button>
+                        </a>
                         <button
                           onClick={() => {
                             setShowProfileMenu(false)
@@ -458,26 +415,46 @@ export default function DashboardPage() {
           transition={{ delay: 0.1 }}
           className="grid grid-cols-1 gap-6 sm:grid-cols-3 mb-8"
         >
-          {stats.map((stat, index) => (
-            <motion.div
-              key={stat.name}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 + index * 0.1 }}
-              className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6 hover:bg-white/10 transition-all group"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className={`p-3 bg-gradient-to-r ${stat.color} rounded-lg group-hover:scale-110 transition-transform`}>
-                  <stat.icon className="h-6 w-6 text-white" />
+          {!stats ? (
+            // Loading skeleton
+            [1, 2, 3].map((index) => (
+              <div
+                key={index}
+                className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6 animate-pulse"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 bg-white/10 rounded-lg"></div>
+                  <div className="text-right">
+                    <div className="w-16 h-8 bg-white/10 rounded"></div>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-3xl font-bold text-white">{stat.value}</p>
-                </div>
+                <div className="w-24 h-4 bg-white/10 rounded mb-2"></div>
+                <div className="w-32 h-3 bg-white/10 rounded"></div>
               </div>
-              <p className="text-sm font-medium text-white mb-1">{stat.name}</p>
-              <p className="text-xs text-gray-400">{stat.change}</p>
-            </motion.div>
-          ))}
+            ))
+          ) : (
+            // Actual stats
+            stats.map((stat, index) => (
+              <motion.div
+                key={stat.name}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 + index * 0.1 }}
+                className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6 hover:bg-white/10 transition-all group"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className={`p-3 bg-gradient-to-r ${stat.color} rounded-lg group-hover:scale-110 transition-transform`}>
+                    <stat.icon className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="text-right">
+                    <p className="text-3xl font-bold text-white">{stat.value}</p>
+                  </div>
+                </div>
+                <p className="text-sm font-medium text-white mb-1">{stat.name}</p>
+                <p className="text-xs text-gray-400">{stat.change}</p>
+              </motion.div>
+            ))
+          )}
         </motion.div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -561,22 +538,41 @@ export default function DashboardPage() {
                 Recent Activity
               </h3>
               <div className="space-y-4">
-                {recentActivity.map((activity, index) => {
-                  const meta = getActivityMeta(activity.action, activity.entity_type)
-                  const ActivityIcon = meta.icon
-                  return (
-                    <div key={index} className="flex items-start gap-3">
-                      <div className={`p-2 bg-white/10 rounded-lg ${meta.color}`}>
-                        <ActivityIcon className="w-4 h-4" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm text-white font-medium">{activity.action}</p>
-                        <p className="text-xs text-gray-400">{activity.entity_name || 'Unknown'}</p>
-                        <p className="text-xs text-gray-500 mt-1">{getTimeAgo(activity.created_at)}</p>
+                {dataLoading ? (
+                  // Loading skeleton
+                  [1, 2, 3].map((index) => (
+                    <div key={index} className="flex items-start gap-3 animate-pulse">
+                      <div className="w-8 h-8 bg-white/10 rounded-lg"></div>
+                      <div className="flex-1 space-y-2">
+                        <div className="w-24 h-3 bg-white/10 rounded"></div>
+                        <div className="w-32 h-2 bg-white/10 rounded"></div>
+                        <div className="w-20 h-2 bg-white/10 rounded"></div>
                       </div>
                     </div>
-                  )
-                })}
+                  ))
+                ) : recentActivity.length > 0 ? (
+                  recentActivity.map((activity, index) => {
+                    const meta = getActivityMeta(activity.action, activity.entity_type)
+                    const ActivityIcon = meta.icon
+                    return (
+                      <div key={index} className="flex items-start gap-3">
+                        <div className={`p-2 bg-white/10 rounded-lg ${meta.color}`}>
+                          <ActivityIcon className="w-4 h-4" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm text-white font-medium">{activity.action}</p>
+                          <p className="text-xs text-gray-400">{activity.entity_name || 'Unknown'}</p>
+                          <p className="text-xs text-gray-500 mt-1">{getTimeAgo(activity.created_at)}</p>
+                        </div>
+                      </div>
+                    )
+                  })
+                ) : (
+                  <div className="text-center py-6">
+                    <ClockIcon className="w-10 h-10 text-gray-500 mx-auto mb-2" />
+                    <p className="text-sm text-gray-400">No activity yet</p>
+                  </div>
+                )}
               </div>
             </motion.div>
 
@@ -597,7 +593,12 @@ export default function DashboardPage() {
                 </a>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                {recentDesigns.length > 0 ? (
+                {dataLoading ? (
+                  // Loading skeleton
+                  [1, 2, 3, 4].map((index) => (
+                    <div key={index} className="aspect-video rounded-lg bg-white/5 animate-pulse"></div>
+                  ))
+                ) : recentDesigns.length > 0 ? (
                   recentDesigns.map((design) => (
                     <a
                       key={design.id}

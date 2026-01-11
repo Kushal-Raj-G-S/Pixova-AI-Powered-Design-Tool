@@ -1,6 +1,7 @@
 'use client'
 
 import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/lib/supabase'
 import { BellIcon, CheckCircleIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
@@ -17,51 +18,33 @@ interface Notification {
 
 export default function NotificationsPage() {
     const router = useRouter()
-    const { user } = useAuth()
+    const { user, loading } = useAuth()
     const [notifications, setNotifications] = useState<Notification[]>([])
     const [filter, setFilter] = useState<'all' | 'unread'>('all')
     const [isLoading, setIsLoading] = useState(true)
 
     useEffect(() => {
+        if (loading) return // Wait for auth to load
+
         if (!user) {
             router.push('/auth/login')
             return
         }
         loadNotifications()
-    }, [user])
+    }, [user, loading])
 
     const loadNotifications = async () => {
         setIsLoading(true)
         try {
-            // Mock notifications for now - replace with real database query
-            const mockNotifications: Notification[] = [
-                {
-                    id: '1',
-                    title: 'Welcome to Pixoa!',
-                    message: 'Your account has been created successfully. Start creating amazing designs!',
-                    type: 'success',
-                    read: false,
-                    created_at: new Date().toISOString(),
-                },
-                {
-                    id: '2',
-                    title: 'Free Credits Added',
-                    message: 'You received 100 free credits to get started with AI design generation.',
-                    type: 'info',
-                    read: false,
-                    created_at: new Date(Date.now() - 3600000).toISOString(),
-                },
-                {
-                    id: '3',
-                    title: 'Design Exported',
-                    message: 'Your design "Product Banner" has been exported successfully.',
-                    type: 'success',
-                    read: true,
-                    created_at: new Date(Date.now() - 86400000).toISOString(),
-                    link: '/my-designs',
-                },
-            ]
-            setNotifications(mockNotifications)
+            const { data, error } = await supabase
+                .from('notifications')
+                .select('*')
+                .eq('user_id', user?.id)
+                .order('created_at', { ascending: false })
+                .limit(50)
+
+            if (error) throw error
+            setNotifications(data || [])
         } catch (error) {
             console.error('Error loading notifications:', error)
         } finally {
@@ -70,30 +53,73 @@ export default function NotificationsPage() {
     }
 
     const markAsRead = async (id: string) => {
-        setNotifications(prev =>
-            prev.map(notif =>
-                notif.id === id ? { ...notif, read: true } : notif
+        try {
+            const { error } = await supabase
+                .from('notifications')
+                .update({ read: true, read_at: new Date().toISOString() })
+                .eq('id', id)
+                .eq('user_id', user?.id)
+
+            if (error) throw error
+
+            setNotifications(prev =>
+                prev.map(notif =>
+                    notif.id === id ? { ...notif, read: true } : notif
+                )
             )
-        )
-        // TODO: Update in database
+        } catch (error) {
+            console.error('Error marking notification as read:', error)
+        }
     }
 
     const markAllAsRead = async () => {
-        setNotifications(prev =>
-            prev.map(notif => ({ ...notif, read: true }))
-        )
-        // TODO: Update all in database
+        try {
+            const { error } = await supabase
+                .from('notifications')
+                .update({ read: true, read_at: new Date().toISOString() })
+                .eq('user_id', user?.id)
+                .eq('read', false)
+
+            if (error) throw error
+
+            setNotifications(prev =>
+                prev.map(notif => ({ ...notif, read: true }))
+            )
+        } catch (error) {
+            console.error('Error marking all notifications as read:', error)
+        }
     }
 
     const deleteNotification = async (id: string) => {
-        setNotifications(prev => prev.filter(notif => notif.id !== id))
-        // TODO: Delete from database
+        try {
+            const { error } = await supabase
+                .from('notifications')
+                .delete()
+                .eq('id', id)
+                .eq('user_id', user?.id)
+
+            if (error) throw error
+
+            setNotifications(prev => prev.filter(notif => notif.id !== id))
+        } catch (error) {
+            console.error('Error deleting notification:', error)
+        }
     }
 
     const clearAll = async () => {
         if (confirm('Are you sure you want to clear all notifications?')) {
-            setNotifications([])
-            // TODO: Delete all from database
+            try {
+                const { error } = await supabase
+                    .from('notifications')
+                    .delete()
+                    .eq('user_id', user?.id)
+
+                if (error) throw error
+
+                setNotifications([])
+            } catch (error) {
+                console.error('Error clearing notifications:', error)
+            }
         }
     }
 
@@ -167,8 +193,8 @@ export default function NotificationsPage() {
                         <button
                             onClick={() => setFilter('all')}
                             className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${filter === 'all'
-                                    ? 'bg-purple-600 text-white'
-                                    : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                                ? 'bg-purple-600 text-white'
+                                : 'bg-white/5 text-gray-400 hover:bg-white/10'
                                 }`}
                         >
                             All ({notifications.length})
@@ -176,8 +202,8 @@ export default function NotificationsPage() {
                         <button
                             onClick={() => setFilter('unread')}
                             className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${filter === 'unread'
-                                    ? 'bg-purple-600 text-white'
-                                    : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                                ? 'bg-purple-600 text-white'
+                                : 'bg-white/5 text-gray-400 hover:bg-white/10'
                                 }`}
                         >
                             Unread ({unreadCount})
