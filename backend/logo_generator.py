@@ -1,9 +1,10 @@
-"""Pixova AI - Logo Generator
-Production-grade image generation with retry logic and comprehensive error handling
+"""Pixova AI - Logo Generator with Advanced Prompt Intelligence
+Production-grade with focus on prompt accuracy + creative excellence
 """
 import asyncio
 import time
 import base64
+import re
 from typing import Optional
 from openai import OpenAI
 from openai import APIError, APIConnectionError as OpenAIConnectionError, RateLimitError as OpenAIRateLimitError
@@ -17,31 +18,187 @@ from exceptions import (
     GenerationError
 )
 from models import GenerationResult
-# Disabled heavy dependencies - not needed for basic operation
-# from image_processor import processor
-# from quality_validator import validate_logo_quality
 
 logger = get_logger(__name__)
 
 
-class LogoGenerator:
-    """
-    Production Logo Generation Engine
+class PromptAnalyzer:
+    """Intelligent prompt analyzer to extract user intent and enhance accordingly"""
     
-    Features:
-    - Multi-model fallback chain
-    - Exponential backoff retry per model
-    - Comprehensive error handling
-    - Performance metrics tracking
-    - Structured logging
-    """
+    @staticmethod
+    def extract_key_elements(prompt: str) -> dict:
+        """Parse prompt to understand what user REALLY wants"""
+        prompt_lower = prompt.lower()
+        
+        # Core subject extraction
+        subjects = {
+            'animal': bool(re.search(r'\b(lion|eagle|wolf|bear|tiger|bird|fish|dragon|phoenix)\b', prompt_lower)),
+            'nature': bool(re.search(r'\b(tree|leaf|mountain|wave|sun|moon|flower|forest)\b', prompt_lower)),
+            'tech': bool(re.search(r'\b(circuit|code|digital|tech|ai|robot|cyber|data|network)\b', prompt_lower)),
+            'abstract': bool(re.search(r'\b(abstract|geometric|shape|circle|triangle|square|pattern)\b', prompt_lower)),
+            'food': bool(re.search(r'\b(coffee|food|restaurant|kitchen|chef|pizza|burger)\b', prompt_lower)),
+            'medical': bool(re.search(r'\b(medical|health|doctor|hospital|care|wellness|heart)\b', prompt_lower)),
+            'finance': bool(re.search(r'\b(finance|money|bank|invest|growth|wealth|dollar)\b', prompt_lower)),
+            'education': bool(re.search(r'\b(education|learn|book|school|university|knowledge)\b', prompt_lower)),
+        }
+        
+        # Emotional tone detection
+        emotions = {
+            'powerful': bool(re.search(r'\b(strong|power|bold|fierce|dominant|mighty)\b', prompt_lower)),
+            'friendly': bool(re.search(r'\b(friendly|warm|welcoming|approachable|kind)\b', prompt_lower)),
+            'luxury': bool(re.search(r'\b(luxury|premium|elegant|sophisticated|exclusive)\b', prompt_lower)),
+            'playful': bool(re.search(r'\b(playful|fun|cheerful|happy|energetic)\b', prompt_lower)),
+            'professional': bool(re.search(r'\b(professional|corporate|business|formal|serious)\b', prompt_lower)),
+            'innovative': bool(re.search(r'\b(innovative|creative|modern|future|cutting.edge)\b', prompt_lower)),
+        }
+        
+        # Color mentions
+        colors = re.findall(r'\b(red|blue|green|yellow|purple|orange|black|white|gold|silver|pink|brown)\b', prompt_lower)
+        
+        # Specific requests
+        has_specific_shape = bool(re.search(r'\b(circle|square|triangle|hexagon|pentagon|star|diamond)\b', prompt_lower))
+        has_specific_industry = any(subjects.values())
+        wants_text = bool(re.search(r'\b(text|letter|word|name|typography|font)\b', prompt_lower))
+        wants_icon_only = bool(re.search(r'\b(icon|symbol|mark|emblem|badge|just.the)\b', prompt_lower))
+        
+        return {
+            'subjects': {k: v for k, v in subjects.items() if v},
+            'emotions': {k: v for k, v in emotions.items() if v},
+            'colors': colors,
+            'has_specific_shape': has_specific_shape,
+            'has_specific_industry': has_specific_industry,
+            'wants_text': wants_text,
+            'wants_icon_only': wants_icon_only,
+            'raw_prompt': prompt
+        }
+    
+    @staticmethod
+    def build_intelligent_prompt(analysis: dict, style: str, include_text: bool) -> str:
+        """Build a laser-focused prompt that delivers EXACTLY what user wants"""
+        
+        # Start with user's exact request - NEVER lose this
+        base = analysis['raw_prompt']
+        
+        # LAYER 1: Reinforce user's core subject (make it UNMISSABLE)
+        subject_boost = ""
+        if analysis['subjects']:
+            primary_subject = list(analysis['subjects'].keys())[0]
+            subject_boost = f"PRIMARY FOCUS: {primary_subject} theme, "
+        
+        # LAYER 2: Emotional tone amplification
+        emotion_boost = ""
+        if analysis['emotions']:
+            primary_emotion = list(analysis['emotions'].keys())[0]
+            emotion_map = {
+                'powerful': 'commanding presence, bold visual impact, strength conveyed through design',
+                'friendly': 'approachable aesthetic, warm visual language, inviting composition',
+                'luxury': 'premium materials feel, refined elegance, exclusive brand positioning',
+                'playful': 'dynamic energy, joyful visual rhythm, engaging personality',
+                'professional': 'authoritative presence, business credibility, polished execution',
+                'innovative': 'forward-thinking design, disruptive visual language, pioneering aesthetic'
+            }
+            emotion_boost = emotion_map.get(primary_emotion, '')
+        
+        # LAYER 3: Industry-specific excellence standards
+        industry_standards = {
+            'tech': 'silicon valley grade, startup-ready, VC-pitch worthy, Apple-level polish',
+            'medical': 'healthcare trust signals, FDA-compliant aesthetic, patient-reassuring design',
+            'finance': 'wall street credibility, institutional-grade, wealth management quality',
+            'food': 'appetite-appealing, restaurant-grade branding, michelin-star presentation',
+            'education': 'academic excellence conveyed, institutional trust, knowledge authority',
+        }
+        
+        industry_boost = ""
+        for industry in analysis['subjects']:
+            if industry in industry_standards:
+                industry_boost = industry_standards[industry]
+                break
+        
+        # LAYER 4: Color accuracy (if user specified colors, PRIORITIZE them)
+        color_enforcement = ""
+        if analysis['colors']:
+            color_enforcement = f"MANDATORY COLORS: {', '.join(analysis['colors'])}, exact color matching critical, "
+        
+        # LAYER 5: Shape precision (if user wants specific geometry)
+        shape_enforcement = ""
+        if analysis['has_specific_shape']:
+            shape_enforcement = "geometric precision required, exact shape adherence, mathematical accuracy, "
+        
+        # LAYER 6: Text handling intelligence - FIXED to avoid AI adding literal text
+        text_strategy = ""
+        if include_text and analysis['wants_text']:
+            text_strategy = (
+                "premium typography integrated, designer-grade font selection, "
+                "optical kerning, professional text composition, readable at all sizes, "
+            )
+        elif analysis['wants_icon_only'] or not include_text:
+            text_strategy = (
+                "graphic symbol, pictorial mark, abstract shape, visual icon, "
+                "geometric symbol, emblematic mark, iconographic design, "
+                "clean symbol design, pure graphic element, "
+            )
+        
+        # LAYER 7: Style amplification (but never override user intent)
+        style_map = {
+            'modern': 'contemporary design language, 2024 trends, current visual aesthetic',
+            'corporate': 'fortune 500 caliber, boardroom-ready, institutional quality',
+            'creative': 'Behance featured quality, design award winning, portfolio-grade',
+            'minimalist': 'Dieter Rams principles, essential elements only, maximum impact minimum means',
+            'vibrant': 'color psychology mastery, energetic palette, visual excitement',
+            'elegant': 'timeless sophistication, luxury brand aesthetic, refined taste'
+        }
+        style_boost = style_map.get(style, style_map['modern'])
+        
+        # QUALITY FOUNDATION (always present but never overshadowing user request)
+        quality_base = (
+            "professional logo design, vector-perfect execution, scalable from favicon to billboard, "
+            "Pantone-accurate colors, production-ready, client-presentation grade"
+        )
+        
+        # CRITICAL NEGATIVES - what to absolutely AVOID
+        universal_negatives = (
+            "blurry, pixelated, amateur, clipart, watermark, low resolution, "
+            "generic stock, placeholder, cheap effects, 3D gimmicks, drop shadows, "
+            "bevels, gradients-for-sake-of-gradients, texture overlays, "
+            "distorted proportions, misaligned elements, "
+        )
+        
+        # Add text negatives if not wanted - ALL IN NEGATIVE PROMPT to avoid AI rendering them
+        if not include_text or analysis['wants_icon_only']:
+            universal_negatives += (
+                "NO TEXT, NO LETTERS, NO WORDS, NO TYPOGRAPHY, "
+                "NO ALPHABET CHARACTERS, NO NUMBERS, NO WRITING of any kind, "
+                "no readable text, no letter shapes, no typographic elements, "
+                "no company name, no tagline, no slogan, no labels, "
+            )
+        
+        # ASSEMBLY: User intent FIRST, enhancements second
+        final_prompt = (
+            f"{base}, "  # User's request is SACRED
+            f"{subject_boost}"  # Reinforce their subject
+            f"{emotion_boost}, "  # Amplify their emotion
+            f"{color_enforcement}"  # Respect their colors
+            f"{shape_enforcement}"  # Honor their shapes
+            f"{text_strategy}"  # Handle text correctly
+            f"{industry_boost}, "  # Industry excellence
+            f"{style_boost}, "  # Style enhancement
+            f"{quality_base}, "  # Quality baseline
+            f"AVOID: {universal_negatives}"  # What NOT to do
+        )
+        
+        return final_prompt
+
+
+class LogoGenerator:
+    """Production Logo Generation Engine with Intelligent Prompting"""
     
     def __init__(self):
         self._client: Optional[OpenAI] = None
         self._models = settings.all_models
         self._initialized = False
-        self._enable_processing = False  # Disable post-processing (causing download issues)
-        self._enable_validation = False  # Disable CLIP validation by default (resource intensive)
+        self._enable_processing = False
+        self._enable_validation = False
+        self.analyzer = PromptAnalyzer()
         
     def _get_client(self) -> OpenAI:
         """Lazy initialization of OpenAI client"""
@@ -53,7 +210,7 @@ class LogoGenerator:
             )
             self._initialized = True
             logger.info(
-                "LogoGenerator client initialized",
+                "LogoGenerator initialized with intelligent prompting",
                 base_url=settings.a4f_base_url,
                 models_count=len(self._models)
             )
@@ -70,57 +227,47 @@ class LogoGenerator:
         include_text_in_ai: bool = False
     ) -> dict:
         """
-        Generate logo(s) with full retry and fallback logic.
-        
-        Args:
-            user_id: User identifier for logging
-            prompt: Logo description
-            style: Style preset (for prompt enhancement)
-            width: Image width
-            height: Image height
-            num_variations: Number of variations to generate
-            include_text_in_ai: Whether AI should generate text (False = icon only)
-            
-        Returns:
-            dict with variations list and metadata
+        Generate logo(s) with intelligent prompt analysis and enhancement
         """
         overall_start = time.perf_counter()
         size = f"{width}x{height}"
         
-        # Enhance prompt with style and text handling strategy
-        enhanced_prompt = self._enhance_prompt(prompt, style, include_text_in_ai)
+        # STEP 1: Analyze what user REALLY wants
+        logger.info(f"🔍 Analyzing prompt: '{prompt[:60]}...'")
+        analysis = self.analyzer.extract_key_elements(prompt)
         
         logger.info(
-            f"🎨 Starting logo generation for '{prompt[:50]}{'...' if len(prompt) > 50 else ''}'")
-        logger.info(f"🔢 Generating {num_variations} variation{'s' if num_variations > 1 else ''}")
-        logger.debug(
-            "Generation parameters",
-            user_id=user_id,
-            prompt_length=len(prompt),
-            style=style,
-            size=size,
-            num_variations=num_variations
+            f"📊 Detected: {list(analysis['subjects'].keys()) if analysis['subjects'] else 'general'} | "
+            f"Tone: {list(analysis['emotions'].keys())[0] if analysis['emotions'] else 'neutral'} | "
+            f"Colors: {analysis['colors'] if analysis['colors'] else 'auto'}"
         )
         
-        # Generate all variations
+        # STEP 2: Build intelligent, focused prompt
+        enhanced_prompt = self.analyzer.build_intelligent_prompt(
+            analysis, style, include_text_in_ai
+        )
+        
+        logger.debug(f"🎯 Enhanced prompt: {enhanced_prompt[:200]}...")
+        logger.info(f"🎨 Generating {num_variations} variation(s)")
+        
+        # STEP 3: Generate variations with diversity
         variations = []
         for i in range(num_variations):
             if num_variations > 1:
-                logger.info(f"🔹 Generating variation {i + 1}/{num_variations}")
+                logger.info(f"🔹 Variation {i + 1}/{num_variations}")
             
-            # Add variation modifier to prompt for diversity
+            # For multiple variations, add creative diversity WITHOUT losing user intent
             variation_prompt = enhanced_prompt
             if num_variations > 1 and i > 0:
-                variation_modifiers = [
-                    "alternative composition, different visual approach, unique interpretation",
-                    "reimagined concept, fresh perspective, creative variation",
-                    "distinct style, alternative aesthetic, different mood",
-                    "unique geometric arrangement, different symbolism, varied approach",
-                    "original interpretation, alternative design language, fresh concept"
+                diversity_angles = [
+                    "alternative visual interpretation, different compositional approach",
+                    "reimagined concept, fresh creative angle",
+                    "distinct aesthetic direction, varied mood",
+                    "unique geometric arrangement, alternative symbolism",
+                    "different design language, creative reframing"
                 ]
-                # Keep quality high while adding diversity
-                diversity_boost = variation_modifiers[i % len(variation_modifiers)]
-                variation_prompt = f"{enhanced_prompt}, {diversity_boost}, maintain premium quality"
+                diversity = diversity_angles[i % len(diversity_angles)]
+                variation_prompt = f"{enhanced_prompt}, {diversity}, MAINTAIN core concept"
             
             result = await self._generate_single(
                 prompt=variation_prompt,
@@ -131,13 +278,17 @@ class LogoGenerator:
         
         total_time = int((time.perf_counter() - overall_start) * 1000)
         
-        logger.info(
-            f"✅ All {num_variations} variation{'s' if num_variations > 1 else ''} generated successfully in {total_time/1000:.1f}s")
+        logger.info(f"✅ Generated {num_variations} logo(s) in {total_time/1000:.1f}s")
         
         return {
             "variations": variations,
             "total_time_ms": total_time,
-            "num_generated": len(variations)
+            "num_generated": len(variations),
+            "prompt_analysis": {
+                "detected_subject": list(analysis['subjects'].keys())[0] if analysis['subjects'] else None,
+                "detected_emotion": list(analysis['emotions'].keys())[0] if analysis['emotions'] else None,
+                "colors_requested": analysis['colors']
+            }
         }
     
     async def _generate_single(
@@ -146,21 +297,11 @@ class LogoGenerator:
         size: str,
         variation_number: int = 1
     ) -> dict:
-        """
-        Generate a single logo variation with intelligent model routing.
-        
-        Returns:
-            dict with image_url, model, generation_time_ms, variation_number
-        """
+        """Generate single variation with model fallback"""
         start_time = time.perf_counter()
-        
-        # Use configured model order (respects PRIMARY_MODEL from .env)
         models_to_try = self._models
-        
-        # Track errors for reporting
         errors: list[dict] = []
         
-        # Try each model in intelligent order
         for model_idx, model in enumerate(models_to_try):
             model_result = await self._try_model(
                 model=model,
@@ -172,47 +313,16 @@ class LogoGenerator:
             if model_result["success"]:
                 generation_time = int((time.perf_counter() - start_time) * 1000)
                 
-                logger.info(
-                    f"✅ Logo generated successfully in {model_result['time_ms']/1000:.1f}s using {model}")
-                
-                image_url = model_result["image_url"]
-                
-                # POST-PROCESSING PIPELINE
-                if self._enable_processing:
-                    logger.info("🔧 Applying post-processing pipeline...")
-                    processed_bytes = processor.process_logo(image_url)
-                    
-                    if processed_bytes:
-                        # Convert to data URL for frontend
-                        base64_image = base64.b64encode(processed_bytes).decode('utf-8')
-                        image_url = f"data:image/png;base64,{base64_image}"
-                        logger.info("✅ Post-processing complete")
-                    else:
-                        logger.warning("⚠️ Post-processing failed, using original image")
-                
-                # QUALITY VALIDATION (optional, resource intensive)
-                if self._enable_validation:
-                    logger.info("🔍 Validating logo quality...")
-                    is_valid, score = validate_logo_quality(image_url, prompt)
-                    
-                    if not is_valid:
-                        logger.warning(f"⚠️ Quality score low ({score:.3f}), may retry...")
-                        # Could implement retry logic here
-                    else:
-                        logger.info(f"✅ Quality validated (score: {score:.3f})")
+                logger.info(f"✅ Generated in {model_result['time_ms']/1000:.1f}s using {model}")
                 
                 return {
-                    "image_url": image_url,
+                    "image_url": model_result["image_url"],
                     "model_used": model,
                     "generation_time_ms": model_result["time_ms"],
                     "variation_number": variation_number
                 }
             
-            # Track failure
-            errors.append({
-                "model": model,
-                "error": model_result["error"]
-            })
+            errors.append({"model": model, "error": model_result["error"]})
         
         # All models failed
         total_time = int((time.perf_counter() - start_time) * 1000)
@@ -222,58 +332,13 @@ class LogoGenerator:
             "All models failed",
             models_tried=len(models_to_try),
             last_error=last_error,
-            total_time_ms=total_time,
-            exc_info=False
+            total_time_ms=total_time
         )
         
         raise AllModelsFailedError(
             models_tried=len(models_to_try),
             last_error=last_error
         )
-    
-    def _route_models_by_prompt(self, prompt: str) -> list[str]:
-        """
-        Intelligently route to best models based on prompt content.
-        Addresses ChatGPT's weakness analysis.
-        """
-        prompt_lower = prompt.lower()
-        
-        # Pattern detection
-        has_text = any(word in prompt_lower for word in ["text", "letter", "font", "typography", "word", "name"])
-        has_symmetry = any(word in prompt_lower for word in ["symmetry", "symmetric", "balanced", "mirror", "radial"])
-        has_shapes = any(word in prompt_lower for word in ["triangle", "square", "circle", "geometric", "shape"])
-        needs_precision = any(word in prompt_lower for word in ["exact", "precise", "specific", "strict", "clean"])
-        
-        # Model strengths (based on testing)
-        # flux-schnell: Fast, good at silhouettes, struggles with text
-        # imagen-4: Better at text/precision, slower
-        # dall-e-2: Good at symmetry/patterns
-        
-        if has_text or has_symmetry:
-            # Prioritize Imagen/DALL-E for text and symmetry
-            return [
-                "provider-4/imagen-4",
-                "provider-5/dall-e-2",
-                "provider-4/flux-schnell",
-                "provider-4/imagen-3.5",
-                "provider-4/qwen-image",
-                "provider-5/flux-fast",
-                "provider-5/imagen-4-fast"
-            ]
-        elif needs_precision or has_shapes:
-            # Use precision-focused models
-            return [
-                "provider-4/imagen-4",
-                "provider-4/flux-schnell",
-                "provider-5/dall-e-2",
-                "provider-4/imagen-3.5",
-                "provider-4/qwen-image",
-                "provider-5/flux-fast",
-                "provider-5/imagen-4-fast"
-            ]
-        else:
-            # Default: speed-optimized fallback
-            return self._models
     
     async def _try_model(
         self,
@@ -282,22 +347,15 @@ class LogoGenerator:
         size: str,
         model_idx: int
     ) -> dict:
-        """
-        Try a single model with retries and exponential backoff.
-        
-        Returns:
-            dict with success, image_url/error, and time_ms
-        """
+        """Try single model with retries"""
         max_retries = settings.max_retries_per_model
         
         for retry in range(max_retries):
             try:
-                logger.debug(
-                    f"Trying {model} (attempt {retry + 1}/{max_retries})")
+                logger.debug(f"Trying {model} (attempt {retry + 1}/{max_retries})")
                 
                 start = time.perf_counter()
                 
-                # Run sync OpenAI call in executor
                 loop = asyncio.get_event_loop()
                 response = await loop.run_in_executor(
                     None,
@@ -311,66 +369,36 @@ class LogoGenerator:
                 
                 elapsed_ms = int((time.perf_counter() - start) * 1000)
                 
-                # Check if response contains data
                 if not response.data or len(response.data) == 0:
-                    logger.warning(
-                        "API returned empty response",
-                        model=model
-                    )
-                    return {
-                        "success": False,
-                        "error": "No image data in response"
-                    }
-                
-                image_url = response.data[0].url
+                    logger.warning("Empty response", model=model)
+                    return {"success": False, "error": "No image data"}
                 
                 return {
                     "success": True,
-                    "image_url": image_url,
+                    "image_url": response.data[0].url,
                     "time_ms": elapsed_ms
                 }
                 
             except OpenAIRateLimitError as e:
-                logger.warning(
-                    "Rate limited by model",
-                    model=model,
-                    retry=retry + 1
-                )
-                # Rate limit - wait longer before retry
+                logger.warning("Rate limited", model=model, retry=retry + 1)
                 await self._backoff(retry, multiplier=2.0)
                 
             except OpenAIConnectionError as e:
-                logger.warning(
-                    "Connection error",
-                    model=model,
-                    retry=retry + 1,
-                    error=str(e)
-                )
+                logger.warning("Connection error", model=model, retry=retry + 1)
                 await self._backoff(retry)
                 
             except APIError as e:
-                # API returned an error - may not be retryable
                 error_msg = str(e)
-                
                 if "timeout" in error_msg.lower():
-                    logger.warning("Request timeout", model=model)
+                    logger.warning("Timeout", model=model)
                     await self._backoff(retry)
                 else:
-                    # Likely a permanent error for this model
-                    logger.warning(
-                        "API error, skipping model",
-                        model=model,
-                        error=error_msg[:200]
-                    )
-                    return {
-                        "success": False,
-                        "error": error_msg[:200]
-                    }
+                    logger.warning("API error", model=model, error=error_msg[:200])
+                    return {"success": False, "error": error_msg[:200]}
                     
             except Exception as e:
-                # Unexpected error
                 logger.error(
-                    "Unexpected generation error",
+                    "Unexpected error",
                     model=model,
                     error_type=type(e).__name__,
                     error=str(e)[:200]
@@ -380,11 +408,7 @@ class LogoGenerator:
                     "error": f"{type(e).__name__}: {str(e)[:150]}"
                 }
         
-        # Exhausted retries for this model
-        return {
-            "success": False,
-            "error": f"Exhausted {max_retries} retries"
-        }
+        return {"success": False, "error": f"Exhausted {max_retries} retries"}
     
     async def _backoff(self, retry: int, multiplier: float = 1.0):
         """Exponential backoff with jitter"""
@@ -394,109 +418,26 @@ class LogoGenerator:
             settings.retry_base_delay * (2 ** retry) * multiplier,
             settings.retry_max_delay
         )
-        # Add jitter (±25%)
         delay = delay * (0.75 + random.random() * 0.5)
         
         logger.debug(f"Backing off for {delay:.2f}s")
         await asyncio.sleep(delay)
     
-    def _enhance_prompt(self, prompt: str, style: str, include_text_in_ai: bool = False) -> str:
-        """
-        Enhance prompt with style modifiers + quality boosters + logo-specific constraints.
-        Implements Perplexity's quality improvements for professional-grade outputs.
-        
-        Args:
-            prompt: User's logo description
-            style: Style preset
-            include_text_in_ai: If False, adds 'no text' constraint for cleaner results
-        """
-        style_modifiers = {
-            "modern": "modern, clean, contemporary, professional, award-winning design",
-            "corporate": "corporate, professional, trustworthy, business-like, Fortune 500 quality",
-            "creative": "creative, innovative, artistic, bold, Behance featured",
-            "minimalist": "minimalist, simple, clean lines, elegant simplicity, Swiss design aesthetic",
-            "vibrant": "vibrant, colorful, energetic, eye-catching, premium branding",
-            "elegant": "elegant, sophisticated, refined, luxurious, high-end brand identity"
-        }
-        
-        modifier = style_modifiers.get(style, style_modifiers["modern"])
-        
-        # QUALITY BOOSTERS (Perplexity recommended - immediate 30-40% improvement)
-        quality_enhancers = (
-            "award-winning logo design, Behance trending, professional branding, "
-            "8K resolution, ultra detailed, clean vector style, modern corporate aesthetic, "
-            "Pentagram studio quality, designer-grade, polished finish"
-        )
-        
-        # TEXT HANDLING STRATEGY
-        if include_text_in_ai:
-            # User wants AI to generate text - enhance quality with premium typography
-            text_constraints = (
-                "professional typography, premium font, perfect kerning, "
-                "high-quality lettering, crisp text rendering, designer-grade type, "
-                "legible font with depth, refined letterforms"
-            )
-            text_negative = (
-                "blurry text, misspelled words, distorted letters, unreadable text, "
-                "poor kerning, amateur typography, pixelated text, generic fonts"
-            )
-        else:
-            # User will overlay text - tell AI to skip it COMPLETELY
-            text_constraints = (
-                "PURE ICON ONLY, ABSOLUTELY NO TEXT, NO LETTERS, NO WORDS, NO TYPOGRAPHY, "
-                "graphic symbol only, pictorial mark, abstract shape, visual icon, "
-                "geometric symbol, emblematic mark without any text or letters, "
-                "wordless logo, text-free symbol, pure graphic element, iconographic design"
-            )
-            text_negative = (
-                "text, letters, words, typography, font, alphabet, characters, numbers, "
-                "writing, script, calligraphy, wordmark, lettering, monogram, labels, "
-                "any readable text, letter shapes, typographic elements, written content, "
-                "company name, tagline, slogan, motto, caption, title, heading"
-            )
-        
-        # CRITICAL: Universal negative constraints (Perplexity's anti-quality list)
-        negative_constraints = (
-            f"blurry, low quality, pixelated, amateur, clipart, watermark, text artifacts, "
-            f"generic stock image, placeholder mockup, flat/lifeless, basic/simple gradient only, "
-            f"NO cheap effects, NO basic gradients, NO 3D effects, NO textures, "
-            f"NO bevels, NO heavy shading, NO blur, NO noise, NO glows, {text_negative}"
-        )
-        
-        # POSITIVE: Professional logo discipline (enhanced with depth/sophistication)
-        positive_constraints = (
-            f"clean vector style, sharp edges, sophisticated color palette, "
-            f"professional visual hierarchy, refined geometry, subtle depth, "
-            f"polished details, modern composition, premium finish, "
-            f"high contrast, balanced design, {text_constraints}"
-        )
-        
-        # Build final prompt with quality layers
-        enhanced = f"{prompt}, {modifier}, {quality_enhancers}, {positive_constraints}, {negative_constraints}"
-        
-        return enhanced
-    
     async def health_check(self) -> dict:
-        """
-        Check if the generator can connect to the API.
-        Returns health status for monitoring.
-        """
+        """Health check endpoint"""
         try:
             start = time.perf_counter()
-            # Just verify client can be created (doesn't make API call)
             self._get_client()
             latency = int((time.perf_counter() - start) * 1000)
             
             return {
                 "status": "healthy",
                 "latency_ms": latency,
-                "models_available": len(self._models)
+                "models_available": len(self._models),
+                "features": ["intelligent_prompting", "subject_detection", "emotion_analysis"]
             }
         except Exception as e:
-            return {
-                "status": "unhealthy",
-                "error": str(e)
-            }
+            return {"status": "unhealthy", "error": str(e)}
 
 
 # Singleton instance
