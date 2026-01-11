@@ -475,12 +475,56 @@ export async function updateDesign(designId: string, updates: Partial<Design>): 
  */
 export async function deleteDesign(designId: string, designName: string): Promise<boolean> {
   try {
-    const { error } = await supabase
+    // First, get the design to retrieve image URLs
+    const { data: design, error: fetchError } = await supabase
+      .from('designs')
+      .select('image_url, thumbnail_url')
+      .eq('id', designId)
+      .single()
+
+    if (fetchError) throw fetchError
+
+    // Delete the database record
+    const { error: deleteError } = await supabase
       .from('designs')
       .delete()
       .eq('id', designId)
 
-    if (error) throw error
+    if (deleteError) throw deleteError
+
+    // Delete images from storage bucket if they exist
+    if (design) {
+      const filesToDelete: string[] = []
+
+      // Extract file paths from URLs
+      if (design.image_url) {
+        // Extract path from URL like: https://xxx.supabase.co/storage/v1/object/public/designs/path/to/file.png
+        const imageMatch = design.image_url.match(/\/designs\/(.+)$/)
+        if (imageMatch) {
+          filesToDelete.push(imageMatch[1])
+        }
+      }
+
+      if (design.thumbnail_url) {
+        const thumbMatch = design.thumbnail_url.match(/\/designs\/(.+)$/)
+        if (thumbMatch) {
+          filesToDelete.push(thumbMatch[1])
+        }
+      }
+
+      // Delete files from storage
+      if (filesToDelete.length > 0) {
+        const { error: storageError } = await supabase
+          .storage
+          .from('designs')
+          .remove(filesToDelete)
+
+        if (storageError) {
+          console.error('Error deleting files from storage:', storageError)
+          // Don't fail the whole operation if storage deletion fails
+        }
+      }
+    }
 
     // Log activity
     await logActivity('deleted', 'design', designId, designName)
