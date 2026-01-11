@@ -296,8 +296,9 @@ export default function MyDesignsPage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className={`bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl group hover:border-purple-500/50 transition-all ${viewMode === 'list' ? 'flex items-center' : ''
+                    className={`bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl group hover:border-purple-500/50 transition-all overflow-visible ${viewMode === 'list' ? 'flex items-center' : ''
                       }`}
+                    style={{ position: 'relative', zIndex: openMenuId === design.id ? 100 : 1 }}
                   >
                     {/* Thumbnail */}
                     <div
@@ -360,10 +361,10 @@ export default function MyDesignsPage() {
                           {openMenuId === design.id && (
                             <>
                               <div
-                                className="fixed inset-0 z-40"
+                                className="fixed inset-0 z-[999]"
                                 onClick={() => setOpenMenuId(null)}
                               />
-                              <div className="absolute right-0 top-full mt-1 w-48 bg-gray-800 border border-white/10 rounded-lg shadow-2xl z-50 overflow-hidden">
+                              <div className="absolute right-0 top-full mt-1 w-48 bg-gray-800 border border-white/10 rounded-lg shadow-2xl z-[1000] overflow-hidden">
                                 <a
                                   href={`/editor?id=${design.id}`}
                                   className="flex items-center gap-3 px-4 py-3 text-sm text-white hover:bg-white/10 transition-colors border-b border-white/5"
