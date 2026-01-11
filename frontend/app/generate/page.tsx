@@ -208,6 +208,7 @@ export default function GeneratePage() {
           // Upload image to Supabase Storage
           const permanentUrl = await uploadImageFromUrl(
             variation.image_url,
+            user.email || 'unknown@user.com',
             user.id,
             prompt,
             `${selectedType}_${i + 1}`,

@@ -7,10 +7,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 /**
  * Upload image from URL to Supabase Storage with organized folder structure
- * Structure: userId/prompt_folder/image.png
+ * Structure: user-email/prompt_folder/image.png
  * 
  * @param imageUrl - Temporary AI-generated image URL
- * @param userId - User's UUID
+ * @param userEmail - User's email address
+ * @param userId - User's UUID (for metadata)
  * @param prompt - The generation prompt (first 5-6 words used for folder)
  * @param fileName - Image filename
  * @param planId - User's plan for auto-deletion metadata
@@ -18,6 +19,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
  */
 export async function uploadImageFromUrl(
     imageUrl: string,
+    userEmail: string,
     userId: string,
     prompt: string,
     fileName: string,
@@ -37,9 +39,12 @@ export async function uploadImageFromUrl(
             .toLowerCase()
             .substring(0, 50) // Max 50 chars
 
-        // Generate unique path: userId/prompt_folder/timestamp_filename.png
+        // Sanitize email for folder name (replace @ and . with _)
+        const sanitizedEmail = userEmail.replace(/[@.]/g, '_').toLowerCase()
+
+        // Generate unique path: user-email/prompt_folder/timestamp_filename.png
         const timestamp = Date.now()
-        const filePath = `${userId}/${promptFolder}/${timestamp}_${fileName}.png`
+        const filePath = `${sanitizedEmail}/${promptFolder}/${timestamp}_${fileName}.png`
 
         // Calculate expiry based on plan (for future cleanup job)
         const expiryDays = {
@@ -61,6 +66,7 @@ export async function uploadImageFromUrl(
                 cacheControl: '3600',
                 metadata: {
                     userId,
+                    userEmail,
                     planId,
                     promptFolder,
                     expiryDate: expiryDate.toISOString(),
