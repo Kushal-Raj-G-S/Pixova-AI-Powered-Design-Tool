@@ -443,13 +443,16 @@ class LogoGenerator:
         else:
             # User will overlay text - tell AI to skip it COMPLETELY
             text_constraints = (
-                "ICON ONLY, NO TEXT WHATSOEVER, pure symbol, graphic mark only, "
-                "wordmark-free, text-free design, symbol-only logo, abstract icon, "
-                "emblematic design, visual identity mark"
+                "PURE ICON ONLY, ABSOLUTELY NO TEXT, NO LETTERS, NO WORDS, NO TYPOGRAPHY, "
+                "graphic symbol only, pictorial mark, abstract shape, visual icon, "
+                "geometric symbol, emblematic mark without any text or letters, "
+                "wordless logo, text-free symbol, pure graphic element, iconographic design"
             )
             text_negative = (
-                "text, letters, words, typography, font, alphabet, characters, "
-                "writing, script, calligraphy, wordmark, lettering, monogram with letters"
+                "text, letters, words, typography, font, alphabet, characters, numbers, "
+                "writing, script, calligraphy, wordmark, lettering, monogram, labels, "
+                "any readable text, letter shapes, typographic elements, written content, "
+                "company name, tagline, slogan, motto, caption, title, heading"
             )
         
         # CRITICAL: Universal negative constraints (Perplexity's anti-quality list)
